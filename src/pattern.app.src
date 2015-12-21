@@ -1,0 +1,13 @@
+{application, pattern,
+    [
+        {description, "Pattern Dialog"},
+        {vsn, "0.2"},
+        {registered, []},
+        {applications, [
+            kernel,
+            stdlib
+        ]},
+        {mod, {pattern_app, []}},
+        {env, []},
+        {modules,[]}
+    ]}.
