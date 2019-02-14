@@ -9,7 +9,7 @@
 -module(pattern_fsm).
 -author("andrey-vl").
 
--behaviour(gen_fsm).
+-behaviour(gen_fsm_compat).
 -include("pattern.hrl").
 
 %% API
@@ -19,7 +19,7 @@
     get_pattern_text/1
 ]).
 
-%% gen_fsm callbacks
+%% gen_fsm_compat callbacks
 -export([
     init/1,
     awaiting/2,
@@ -45,7 +45,7 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Creates a gen_fsm process which calls Module:init/1 to
+%% Creates a gen_fsm_compat process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %%
@@ -53,7 +53,7 @@
 %%--------------------------------------------------------------------
 -spec(start_link() -> {ok, pid()} | ignore | {error, Reason :: term()}).
 start_link() ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_fsm_compat:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -62,7 +62,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 get_pattern_tree(PatternTree) ->
-    gen_fsm:send_all_state_event(?SERVER, {get_pattern_tree, PatternTree}).
+    gen_fsm_compat:send_all_state_event(?SERVER, {get_pattern_tree, PatternTree}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -71,17 +71,17 @@ get_pattern_tree(PatternTree) ->
 %% @end
 %%--------------------------------------------------------------------
 get_pattern_text(PatternText) ->
-    gen_fsm:send_all_state_event(?SERVER, {get_pattern_text, PatternText}).
+    gen_fsm_compat:send_all_state_event(?SERVER, {get_pattern_text, PatternText}).
 
 %%%===================================================================
-%%% gen_fsm callbacks
+%%% gen_fsm_compat callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Whenever a gen_fsm is started using gen_fsm:start/[3,4] or
-%% gen_fsm:start_link/[3,4], this function is called by the new
+%% Whenever a gen_fsm_compat is started using gen_fsm_compat:start/[3,4] or
+%% gen_fsm_compat:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
 %% @end
@@ -96,14 +96,14 @@ init([]) ->
     {ok, awaiting, State}.
 
 %% trigger(Pid) ->
-%%     gen_fsm:send_event(Pid, time_is_over).
+%%     gen_fsm_compat:send_event(Pid, time_is_over).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% There should be one instance of this function for each possible
-%% state name. Whenever a gen_fsm receives an event sent using
-%% gen_fsm:send_event/2, the instance of this function with the same
+%% state name. Whenever a gen_fsm_compat receives an event sent using
+%% gen_fsm_compat:send_event/2, the instance of this function with the same
 %% name as the current state name StateName is called to handle
 %% the event. It is also called if a timeout occurs.
 %%
@@ -115,24 +115,24 @@ awaiting({get_awaiting_pattern, PatternText}, State) ->
 
     NewState = State#pattern_state{text_cur = PatternText},
 
-    gen_fsm:send_event(?SERVER, get_pattern),
+    gen_fsm_compat:send_event(?SERVER, get_pattern),
     {next_state, check_pattern, NewState};
 awaiting({with_timeout, TimeOut}, State) ->
     pattern_api:log({?MODULE, awaiting, {with_timeout, TimeOut}}),
 
     if
         TimeOut =/= 0 ->
-            TimeoutRef = gen_fsm:send_event_after(TimeOut, time_is_over),
+            TimeoutRef = gen_fsm_compat:send_event_after(TimeOut, time_is_over),
             put(timeout_ref, TimeoutRef),
             {next_state, awaiting, State};
         true ->
-            gen_fsm:send_event(?SERVER, start),
+            gen_fsm_compat:send_event(?SERVER, start),
             {next_state, awaiting, State}
     end;
 awaiting(time_is_over, State) ->
     pattern_api:log({?MODULE, awaiting, time_is_over}),
 
-    gen_fsm:send_event(?SERVER, time_is_over),
+    gen_fsm_compat:send_event(?SERVER, time_is_over),
     {next_state, action, State};
 awaiting(_Event, State) ->
     pattern_api:log({?MODULE, awaiting, event}),
@@ -140,7 +140,7 @@ awaiting(_Event, State) ->
     TimeoutRef = get(timeout_ref),
     if
         TimeoutRef =/= undefined ->
-            gen_fsm:cancel_timer(TimeoutRef),
+            gen_fsm_compat:cancel_timer(TimeoutRef),
             erase(timeout_ref);
         true -> ok
     end,
@@ -174,14 +174,14 @@ check_pattern(get_pattern, State) ->
 
                     NewState = State#pattern_state{el_tree_cur = ElementMath},
 
-                    gen_fsm:send_event(?SERVER, found_pattern),
+                    gen_fsm_compat:send_event(?SERVER, found_pattern),
                     {next_state, move_in_tree, NewState};
                 true ->
-                    gen_fsm:send_event(?SERVER, unfound_pattern),
+                    gen_fsm_compat:send_event(?SERVER, unfound_pattern),
                     {next_state, action, State}
             end;
         true ->
-            gen_fsm:send_event(?SERVER, unfound_pattern),
+            gen_fsm_compat:send_event(?SERVER, unfound_pattern),
             {next_state, action, State}
     end;
 check_pattern(_Event, State) ->
@@ -202,7 +202,7 @@ action(pattern_move, State) ->
         true -> undefined
     end,
 
-    gen_fsm:send_event(?SERVER, move_in),
+    gen_fsm_compat:send_event(?SERVER, move_in),
     {next_state, move_in_tree, State};
 action(unfound_pattern, State) ->
     pattern_api:log({?MODULE, action, unfound_pattern}),
@@ -217,17 +217,17 @@ action(unfound_pattern, State) ->
         true -> undefined
     end,
 
-    gen_fsm:send_event(?SERVER, move_in_timeout),
+    gen_fsm_compat:send_event(?SERVER, move_in_timeout),
     {next_state, move_in_tree, State};
 action(time_is_over, State) ->
     pattern_api:log({?MODULE, action, time_is_over}),
 
-    gen_fsm:send_event(?SERVER, unfound_pattern),
+    gen_fsm_compat:send_event(?SERVER, unfound_pattern),
     {next_state, action, State};
 action(_Event, State) ->
     pattern_api:log({?MODULE, action, event}),
 
-    gen_fsm:send_event(?SERVER, start),
+    gen_fsm_compat:send_event(?SERVER, start),
     {next_state, awaiting, State}.
 
 move_in_tree(found_pattern, State) ->
@@ -239,7 +239,7 @@ move_in_tree(found_pattern, State) ->
         State#pattern_state{
             el_tree_cur_id = pattern_api:element_tree_get_value(id, ElementTree)},
 
-    gen_fsm:send_event(?SERVER, pattern_move),
+    gen_fsm_compat:send_event(?SERVER, pattern_move),
     {next_state, action, NewState};
 move_in_tree(move_in, State) ->
     pattern_api:log({?MODULE, move_in_tree, move_in}),
@@ -274,18 +274,18 @@ move_in_tree(move_in, State) ->
 
             case pattern_api:element_tree_get_value(pattern, PatternMoveElementTree) of
                 other ->
-                    gen_fsm:send_event(?SERVER, pattern_move),
+                    gen_fsm_compat:send_event(?SERVER, pattern_move),
                     {next_state, action, NewState};
                 _ ->
                     TimeOut = pattern_api:element_tree_get_value(timeout, ElementTree, 0) * 1000,
 
-                    gen_fsm:send_event(?SERVER, {with_timeout, TimeOut}),
+                    gen_fsm_compat:send_event(?SERVER, {with_timeout, TimeOut}),
                     {next_state, awaiting, NewState}
             end;
         true ->
             TimeOut = pattern_api:element_tree_get_value(timeout, ElementTree, 0) * 1000,
 
-            gen_fsm:send_event(?SERVER, {with_timeout, TimeOut}),
+            gen_fsm_compat:send_event(?SERVER, {with_timeout, TimeOut}),
             {next_state, awaiting, State}
     end;
 move_in_tree(move_in_timeout, State) ->
@@ -317,16 +317,16 @@ move_in_tree(move_in_timeout, State) ->
 
             case pattern_api:element_tree_get_value(pattern, TimeoutMoveElementTree) of
                 other ->
-                    gen_fsm:send_event(?SERVER, pattern_move),
+                    gen_fsm_compat:send_event(?SERVER, pattern_move),
                     {next_state, action, NewState};
                 _ ->
                     TimeOut = pattern_api:element_tree_get_value(timeout, TimeoutMoveElementTree, 0) * 1000,
 
-                    gen_fsm:send_event(?SERVER, {with_timeout, TimeOut}),
+                    gen_fsm_compat:send_event(?SERVER, {with_timeout, TimeOut}),
                     {next_state, awaiting, NewState}
             end;
         true ->
-            gen_fsm:send_event(?SERVER, start),
+            gen_fsm_compat:send_event(?SERVER, start),
             {next_state, awaiting, State}
     end;
 move_in_tree(_Event, State) ->
@@ -346,8 +346,8 @@ state_name(_Event, State) ->
 %% @private
 %% @doc
 %% There should be one instance of this function for each possible
-%% state name. Whenever a gen_fsm receives an event sent using
-%% gen_fsm:sync_send_event/[2,3], the instance of this function with
+%% state name. Whenever a gen_fsm_compat receives an event sent using
+%% gen_fsm_compat:sync_send_event/[2,3], the instance of this function with
 %% the same name as the current state name StateName is called to
 %% handle the event.
 %%
@@ -371,8 +371,8 @@ state_name(_Event, _From, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Whenever a gen_fsm receives an event sent using
-%% gen_fsm:send_all_state_event/2, this function is called to handle
+%% Whenever a gen_fsm_compat receives an event sent using
+%% gen_fsm_compat:send_all_state_event/2, this function is called to handle
 %% the event.
 %%
 %% @end
@@ -390,12 +390,12 @@ handle_event({get_pattern_tree, PatternTree}, awaiting, State) ->
     NewPatternTree = CurPatternTree ++ PatternTree,
     NewState = State#pattern_state{pattern_tree = NewPatternTree},
 
-    gen_fsm:send_event(?SERVER, start),
+    gen_fsm_compat:send_event(?SERVER, start),
     {next_state, awaiting, NewState};
 handle_event({get_pattern_text, PatternText}, awaiting, State) ->
     pattern_api:log({?MODULE, {get_pattern_text, PatternText}}),
 
-    gen_fsm:send_event(?SERVER, {get_awaiting_pattern, PatternText}),
+    gen_fsm_compat:send_event(?SERVER, {get_awaiting_pattern, PatternText}),
     {next_state, awaiting, State};
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
@@ -403,8 +403,8 @@ handle_event(_Event, StateName, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Whenever a gen_fsm receives an event sent using
-%% gen_fsm:sync_send_all_state_event/[2,3], this function is called
+%% Whenever a gen_fsm_compat receives an event sent using
+%% gen_fsm_compat:sync_send_all_state_event/[2,3], this function is called
 %% to handle the event.
 %%
 %% @end
@@ -422,7 +422,7 @@ handle_event(_Event, StateName, State) ->
 handle_sync_event({get_pattern_text, PatternText}, _From, awaiting, State) ->
     pattern_api:log({?MODULE, {get_pattern_text, PatternText}}),
 
-    gen_fsm:send_event(?SERVER, {get_awaiting_pattern, PatternText}),
+    gen_fsm_compat:send_event(?SERVER, {get_awaiting_pattern, PatternText}),
     {reply, ok, awaiting, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     Reply = ok,
@@ -431,7 +431,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_fsm when it receives any
+%% This function is called by a gen_fsm_compat when it receives any
 %% message other than a synchronous or asynchronous event
 %% (or a system message).
 %%
@@ -449,9 +449,9 @@ handle_info(_Info, StateName, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_fsm when it is about to
+%% This function is called by a gen_fsm_compat when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_fsm terminates with
+%% necessary cleaning up. When it returns, the gen_fsm_compat terminates with
 %% Reason. The return value is ignored.
 %%
 %% @end
