@@ -6,7 +6,8 @@
         {applications, [
             kernel,
             stdlib,
-            sasl
+            sasl,
+            gen_fsm_compat
         ]},
         {mod, {pattern_app, []}},
         {env, []},
