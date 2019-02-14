@@ -5,7 +5,8 @@
         {registered, []},
         {applications, [
             kernel,
-            stdlib
+            stdlib,
+            gen_fsm_compat
         ]},
         {mod, {pattern_app, []}},
         {env, []},
